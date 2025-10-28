@@ -13,10 +13,12 @@
     "@google-cloud/speech": "^7.2.1",
     "@google-cloud/text-to-speech": "^6.3.1",
     "@google-cloud/vertexai": "^1.10.0",
+    "@google-cloud/vision": "^5.3.4",
     "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "sharp": "^0.34.4",
     "ws": "^8.18.3"
   }
 }

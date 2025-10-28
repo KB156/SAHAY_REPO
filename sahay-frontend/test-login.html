@@ -7,46 +7,65 @@
     <style>
         body {
             font-family: sans-serif;
-            position: relative; /* Needed for absolute positioning of children */
-            height: 500px; /* Give body some height */
+            position: relative; 
+            height: 500px;
+            background-color: #f4f4f4; /* Added body background */
         }
         .form-element {
-            position: absolute; /* Position elements precisely */
-            box-sizing: border-box; /* Include padding/border in size */
+            position: absolute; 
+            box-sizing: border-box; 
         }
         label {
             display: block;
             margin-bottom: 2px;
             font-size: 14px;
+            font-weight: bold; /* Make labels clearer */
         }
+
+        /* --- STYLING FOR INPUT FIELDS --- */
         input[type="text"], input[type="password"] {
-            padding: 5px;
-            width: 100%; /* Make input fill the container */
-            border: 1px solid #ccc;
+            padding: 8px; /* More padding */
+            width: 100%; 
+            border: 2px solid #777; /* Thicker, darker border */
+            border-radius: 5px; /* Rounded corners */
+            background-color: #ffffff; /* Explicit white background */
+            font-size: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) inset; /* Inner shadow */
         }
+
+        /* --- STYLING FOR BUTTON --- */
         button {
             padding: 10px 15px;
             cursor: pointer;
+            background-color: #007bff; /* Strong blue background */
+            color: white; /* White text */
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.2); /* Drop shadow */
         }
+        button:hover {
+            background-color: #0056b3;
+        }
+        
         .error-message {
             color: red;
-            font-size: 12px;
-            visibility: visible; /* Make it visible for testing AR */
+            font-size: 14px; /* Larger font */
+            font-weight: bold;
+            visibility: visible; 
         }
 
-        /* --- Positioning based on hardcoded backend coords --- */
-        /* Username Label (Approx above field) */
+        /* --- Positioning (unchanged, matches backend) --- */
         #user-label { left: 50px; top: 80px; width: 100px; height: 20px; }
-        /* Username Input Field */
-        #username { left: 160px; top: 100px; width: 200px; /* 360-160 */ height: 20px; /* 120-100 */}
-        /* Password Label (Approx above field) */
+        #username { left: 160px; top: 100px; width: 200px; height: 38px; } /* Adjusted height for padding */
+        
         #pass-label { left: 50px; top: 130px; width: 100px; height: 20px; }
-        /* Password Input Field */
-        #password { left: 160px; top: 150px; width: 200px; /* 360-160 */ height: 20px; /* 170-150 */}
-        /* Error Message Area */
-        #error-div { left: 50px; top: 175px; width: 350px; /* 400-50 */ height: 20px; /* 195-175 */}
-        /* Submit Button */
-        #submit-btn { left: 50px; top: 200px; width: 70px; /* 120-50 */ height: 30px; /* 230-200 */}
+        #password { left: 160px; top: 150px; width: 200px; height: 38px; } /* Adjusted height for padding */
+        
+        #error-div { left: 50px; top: 195px; width: 350px; height: 20px; } /* Moved error down */
+        
+        #submit-btn { left: 50px; top: 230px; width: 90px; height: 40px; } /* Moved button down */
     </style>
 </head>
 <body>
@@ -64,10 +83,6 @@
     </div>
 
     <button id="submit-btn" class="form-element" type="button">Submit</button>
-
-    <p style="position: absolute; top: 300px; left: 50px;">
-        (Click anywhere on this page to test the click listener in the SAHAY app).
-    </p>
 
 </body>
 </html>

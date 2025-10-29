@@ -1,5 +1,5 @@
 // src/components/ControlPanel.tsx
-import React from 'react';
+
 
 interface ControlPanelProps {
   isConnected: boolean;

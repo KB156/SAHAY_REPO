@@ -1,9 +1,11 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Play, Square, Scan, Menu, X, ArrowLeft, Zap, Shield, Users, LifeBuoy, Globe } from 'lucide-react'; // Added Globe icon
+import { useState, useRef, useCallback } from 'react'; // Removed unused useEffect
+import { Play, Square, Scan, Menu, X, ArrowLeft, Zap, Shield, Users, LifeBuoy, Globe } from 'lucide-react';
 
 // Styles Component
 const AppStyles = () => (
   <style>{`
+    /* ... [styles are all correct, no changes here] ... */
+
     /* Basic Reset */
     * {
       margin: 0;
@@ -303,15 +305,14 @@ const AppStyles = () => (
       overflow: hidden;
       box-shadow: 0 10px 20px rgba(0,0,0,0.1);
       z-index: 10;
-      transition: all 0.5s ease; /* MODIFIED: Animate all properties */
-      opacity: 1; /* ADDED: Default opacity */
+      transition: all 0.5s ease;
+      opacity: 1;
     }
 
-    /* --- NEW CLASS --- */
     .flowers-hidden {
       opacity: 0;
-      transform: scale(0.8) rotate(0deg) !important; /* Force override rotation */
-      pointer-events: none; /* Disable interaction when hidden */
+      transform: scale(0.8) rotate(0deg) !important;
+      pointer-events: none;
     }
 
     .flower-decoration:hover {
@@ -325,24 +326,22 @@ const AppStyles = () => (
     }
 
     .flower-left {
-      bottom: -10px; /* MODIFIED: More visible */
-      left: -15px; /* MODIFIED: More visible */
+      bottom: -10px;
+      left: -15px;
       transform: rotate(-15deg);
     }
 
-    /* --- NEW CLASS for hidden state --- */
     .flower-left.flowers-hidden {
-      bottom: -150px; /* Pull it further out of view */
+      bottom: -150px;
       left: -150px;
     }
 
     .flower-right {
-      top: -15px; /* MODIFIED: More visible */
-      right: -15px; /* MODIFIED: More visible */
+      top: -15px;
+      right: -15px;
       transform: rotate(20deg);
     }
 
-    /* --- NEW CLASS for hidden state --- */
     .flower-right.flowers-hidden {
       top: -150px;
       right: -150px;
@@ -521,7 +520,6 @@ const AppStyles = () => (
       transform: translateY(-2px);
     }
 
-    /* --- NEW LANGUAGE BUTTON STYLE --- */
     .language-btn {
       background-color: var(--card-white);
       color: var(--text-light);
@@ -533,7 +531,6 @@ const AppStyles = () => (
       color: var(--text-dark);
       transform: translateY(-2px);
     }
-    /* --- END NEW STYLE --- */
 
     /* Status Display */
     .status-display {
@@ -565,7 +562,6 @@ const AppStyles = () => (
       100% { box-shadow: 0 0 0 0 rgba(0, 200, 83, 0); }
     }
     
-    /* --- NEW STYLES FOR CONTENT PAGES --- */
     .page-content {
       width: 100%;
       max-width: 1000px;
@@ -644,7 +640,6 @@ const AppStyles = () => (
       font-size: 1.25rem;
       margin-bottom: 0.5rem;
     }
-    /* --- END NEW STYLES --- */
     
 
     /* Responsive Design */
@@ -822,49 +817,75 @@ const ImageWithFallback = ({ src, alt, style, className }: { src: string, alt: s
   );
 };
 
-// AR Overlay Types and Component
+// --- TYPES ---
+type LanguageCode = 'en-US' | 'hi-IN';
+type PageName = 'home' | 'services' | 'features' | 'about' | 'support';
 
-// --- NEW PAGE COMPONENTS ---
-
+// --- PAGE PROPS TYPE ---
 type PageProps = {
   setPage: (page: PageName) => void;
+  language: LanguageCode;
 };
 
+
+// --- PAGE COMPONENTS ---
+
 // --- Services Page ---
-const ServicesPage = ({ setPage }: PageProps) => {
+const ServicesPage = ({ setPage, language }: PageProps) => {
+  // --- FIX: Changed keys from 'en'/'hi' to 'en-US'/'hi-IN' ---
+  const t = {
+    'en-US': {
+      title: "Our Services",
+      intro: "SAHAY provides premier, real-time technical support designed to solve your problems instantly. Our services are built to be intuitive, responsive, and effective.",
+      card1Title: "Instant Visual Guidance",
+      card1Text: "Our experts see what you see. Through screen sharing, we provide live, on-screen guidance, drawing and pointing to solve issues faster than ever.",
+      card2Title: "Secure & Private",
+      card2Text: "Your privacy is our priority. Our sessions are fully encrypted, and our professionals are trained to handle your data with the utmost confidentiality.",
+      card3Title: "24/7 Expert Support",
+      card3Text: "Get help whenever you need it. Our team of certified professionals is available around the clock to assist you with any technical challenge, big or small.",
+    },
+    'hi-IN': {
+      title: "हमारी सेवाएँ",
+      intro: "SAHAY प्रमुख, वास्तविक समय तकनीकी सहायता प्रदान करता है जिसे आपकी समस्याओं को तुरंत हल करने के लिए डिज़ाइन किया गया है। हमारी सेवाएं सहज, उत्तरदायी और प्रभावी होने के लिए बनाई गई हैं।",
+      card1Title: "तुरंत विज़ुअल मार्गदर्शन",
+      card1Text: "हमारे विशेषज्ञ वही देखते हैं जो आप देखते हैं। स्क्रीन शेयरिंग के माध्यम से, हम मुद्दों को पहले से कहीं अधिक तेजी से हल करने के लिए लाइव, ऑन-स्क्रीन मार्गदर्शन, ड्राइंग और पॉइंटिंग प्रदान करते हैं।",
+      card2Title: "सुरक्षित और निजी",
+      card2Text: "आपकी गोपनीयता हमारी प्राथमिकता है। हमारे सत्र पूरी तरह से एन्क्रिप्टेड हैं, और हमारे पेशेवरों को आपके डेटा को अत्यंत गोपनीयता के साथ संभालने के लिए प्रशिक्षित किया जाता है।",
+      card3Title: "24/7 विशेषज्ञ सहायता",
+      card3Text: "जब भी आपको आवश्यकता हो, सहायता प्राप्त करें। हमारी प्रमाणित पेशेवरों की टीम किसी भी तकनीकी चुनौती, चाहे वह बड़ी हो या छोटी, में आपकी सहायता के लिए चौबीसों घंटे उपलब्ध है।",
+    }
+  }[language];
+
   return (
     <div className="page-content">
       <div className="page-header">
         <button className="back-button" onClick={() => setPage('home')} aria-label="Back to home">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="page-title">Our Services</h1>
+        <h1 className="page-title">{t.title}</h1>
       </div>
-      <p>
-        SAHAY provides premier, real-time technical support designed to solve your problems instantly.
-        Our services are built to be intuitive, responsive, and effective.
-      </p>
+      <p>{t.intro}</p>
       <div className="page-content-grid">
         <div className="content-card">
           <div className="content-card-icon">
             <Zap size={24} />
           </div>
-          <h3>Instant Visual Guidance</h3>
-          <p>Our experts see what you see. Through screen sharing, we provide live, on-screen guidance, drawing and pointing to solve issues faster than ever.</p>
+          <h3>{t.card1Title}</h3>
+          <p>{t.card1Text}</p>
         </div>
         <div className="content-card">
           <div className="content-card-icon">
             <Shield size={24} />
           </div>
-          <h3>Secure & Private</h3>
-          <p>Your privacy is our priority. Our sessions are fully encrypted, and our professionals are trained to handle your data with the utmost confidentiality.</p>
+          <h3>{t.card2Title}</h3>
+          <p>{t.card2Text}</p>
         </div>
         <div className="content-card">
           <div className="content-card-icon">
             <LifeBuoy size={24} />
           </div>
-          <h3>24/7 Expert Support</h3>
-          <p>Get help whenever you need it. Our team of certified professionals is available around the clock to assist you with any technical challenge, big or small.</p>
+          <h3>{t.card3Title}</h3>
+          <p>{t.card3Text}</p>
         </div>
       </div>
     </div>
@@ -872,39 +893,61 @@ const ServicesPage = ({ setPage }: PageProps) => {
 };
 
 // --- Features Page ---
-const FeaturesPage = ({ setPage }: PageProps) => {
+const FeaturesPage = ({ setPage, language }: PageProps) => {
+  // --- FIX: Changed keys from 'en'/'hi' to 'en-US'/'hi-IN' ---
+  const t = {
+    'en-US': {
+      title: "Features",
+      intro: "Our platform is packed with features to make your support experience seamless.",
+      card1Title: "Real-Time AR Overlays",
+      card1Text: "Our core feature. We draw directly on your screen to show you exactly where to click and what to do.",
+      card2Title: "AI-Powered Assistance",
+      card2Text: "Our assistant analyzes your screen to understand the context of your problem, providing faster and more accurate solutions.",
+      card3Title: "Multi-Platform Support",
+      card3Text: "Whether you're on a desktop, laptop, or mobile device, SAHAY is ready to help you on any platform.",
+    },
+    'hi-IN': {
+      title: "विशेषताएँ",
+      intro: "हमारा प्लेटफ़ॉर्म आपके समर्थन अनुभव को सहज बनाने के लिए सुविधाओं से भरा हुआ है।",
+      card1Title: "रियल-टाइम AR ओवरले",
+      card1Text: "हमारी मुख्य विशेषता। हम आपको यह दिखाने के लिए सीधे आपकी स्क्रीन पर चित्र बनाते हैं कि कहाँ क्लिक करना है और क्या करना है।",
+      card2Title: "AI-संचालित सहायता",
+      card2Text: "हमारा सहायक आपकी समस्या के संदर्भ को समझने के लिए आपकी स्क्रीन का विश्लेषण करता है, जो तेज़ और अधिक सटीक समाधान प्रदान करता है।",
+      card3Title: "मल्टी-प्लेटफ़ॉर्म समर्थन",
+      card3Text: "चाहे आप डेस्कटॉप, लैपटॉप या मोबाइल डिवाइस पर हों, SAHAY किसी भी प्लेटफ़ॉर्म पर आपकी सहायता के लिए तैयार है।",
+    }
+  }[language];
+
   return (
     <div className="page-content">
       <div className="page-header">
         <button className="back-button" onClick={() => setPage('home')} aria-label="Back to home">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="page-title">Features</h1>
+        <h1 className="page-title">{t.title}</h1>
       </div>
-      <p>
-        Our platform is packed with features to make your support experience seamless.
-      </p>
+      <p>{t.intro}</p>
       <div className="page-content-grid">
         <div className="content-card">
           <div className="content-card-icon">
             <Zap size={24} />
           </div>
-          <h3>Real-Time AR Overlays</h3>
-          <p>Our core feature. We draw directly on your screen to show you exactly where to click and what to do.</p>
+          <h3>{t.card1Title}</h3>
+          <p>{t.card1Text}</p>
         </div>
         <div className="content-card">
           <div className="content-card-icon">
             <Shield size={24} />
           </div>
-          <h3>AI-Powered Assistance</h3>
-          <p>Our assistant analyzes your screen to understand the context of your problem, providing faster and more accurate solutions.</p>
+          <h3>{t.card2Title}</h3>
+          <p>{t.card2Text}</p>
         </div>
         <div className="content-card">
           <div className="content-card-icon">
             <Users size={24} />
           </div>
-          <h3>Multi-Platform Support</h3>
-          <p>Whether you're on a desktop, laptop, or mobile device, SAHAY is ready to help you on any platform.</p>
+          <h3>{t.card3Title}</h3>
+          <p>{t.card3Text}</p>
         </div>
       </div>
     </div>
@@ -912,76 +955,116 @@ const FeaturesPage = ({ setPage }: PageProps) => {
 };
 
 // --- About Page ---
-const AboutPage = ({ setPage }: PageProps) => {
+const AboutPage = ({ setPage, language }: PageProps) => {
+  // --- FIX: Changed keys from 'en'/'hi' to 'en-US'/'hi-IN' ---
+  const t = {
+    'en-US': {
+      title: "About SAHAY",
+      p1: "SAHAY was founded on a simple principle: technical support should be easy, personal, and instant. We were tired of confusing phone calls and endless support articles. We believed there had to be a better way.",
+      p2: "Our mission is to empower everyone to use technology fearlessly. We connect you with real experts who can see your problem and guide you to a solution in real-time. We're not just a support company; we're your personal tech assistant.",
+    },
+    'hi-IN': {
+      title: "SAHAY के बारे में",
+      p1: "SAHAY की स्थापना एक सरल सिद्धांत पर की गई थी: तकनीकी सहायता आसान, व्यक्तिगत और तत्काल होनी चाहिए। हम भ्रमित करने वाले फोन कॉल और अंतहीन समर्थन लेखों से थक गए थे। हमें विश्वास था कि एक बेहतर तरीका होना चाहिए।",
+      p2: "हमारा मिशन सभी को निडर होकर प्रौद्योगिकी का उपयोग करने के लिए सशक्त बनाना है। हम आपको वास्तविक विशेषज्ञों से जोड़ते हैं जो आपकी समस्या को देख सकते हैं और वास्तविक समय में समाधान के लिए आपका मार्गदर्शन कर सकते हैं। हम सिर्फ एक समर्थन कंपनी नहीं हैं; हम आपके व्यक्तिगत तकनीकी सहायक हैं।",
+    }
+  }[language];
+
   return (
     <div className="page-content">
       <div className="page-header">
         <button className="back-button" onClick={() => setPage('home')} aria-label="Back to home">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="page-title">About SAHAY</h1>
+        <h1 className="page-title">{t.title}</h1>
       </div>
-      <p>
-        SAHAY was founded on a simple principle: technical support should be easy, personal, and instant. We were tired of confusing phone calls and endless support articles.
-        We believed there had to be a better way.
-      </p>
-      <p>
-        Our mission is to empower everyone to use technology fearlessly. We connect you with real experts who can see your problem and guide you to a solution in real-time.
-        We're not just a support company; we're your personal tech assistant.
-      </p>
+      <p>{t.p1}</p>
+      <p>{t.p2}</p>
     </div>
   );
 };
 
 // --- Support Page ---
-// --- FIX: Corrected prop type from PagePageProps to PageProps ---
-const SupportPage = ({ setPage }: PageProps) => {
+const SupportPage = ({ setPage, language }: PageProps) => {
+  // --- FIX: Changed keys from 'en'/'hi' to 'en-US'/'hi-IN' ---
+  const t = {
+    'en-US': {
+      title: "Support",
+      p1: "Need help? You're in the right place. Our main support method is right on the home page! Just click \"Start Session\" to connect with a professional.",
+      p2: "For account inquiries or other questions, you can also reach us at:",
+      email: "Email Us",
+      call: "Call Us",
+    },
+    'hi-IN': {
+      title: "समर्थन",
+      p1: "मदद चाहिए? आप सही जगह पर हैं। हमारा मुख्य समर्थन तरीका होम पेज पर ही है! किसी पेशेवर से जुड़ने के लिए बस \"सत्र शुरू करें\" पर क्लिक करें।",
+      p2: "खाता पूछताछ या अन्य प्रश्नों के लिए, आप हम तक यहां भी पहुंच सकते हैं:",
+      email: "हमें ईमेल करें",
+      call: "हमें कॉल करें",
+    }
+  }[language];
+
   return (
     <div className="page-content">
       <div className="page-header">
         <button className="back-button" onClick={() => setPage('home')} aria-label="Back to home">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="page-title">Support</h1>
+        <h1 className="page-title">{t.title}</h1>
       </div>
-      <p>
-        Need help? You're in the right place. Our main support method is right on the home page!
-        Just click "Start Session" to connect with a professional.
-      </p>
-      <p>
-        For account inquiries or other questions, you can also reach us at:
-      </p>
+      <p>{t.p1}</p>
+      <p>{t.p2}</p>
       <div className="page-content-grid">
         <div className="content-card">
-          <h3>Email Us</h3>
-          <p>contact@sahay.assistant</p>
+          <h3>{t.email}</h3>
+          <p>sahayemail.com</p>
         </div>
         <div className="content-card">
-          <h3>Call Us</h3>
-          <p>+1 (800) 555-SAHY</p>
+          <h3>{t.call}</h3>
+          <p>+91 0001112223</p>
         </div>
       </div>
     </div>
   );
 };
 
-// --- END NEW PAGE COMPONENTS ---
-// At the top of App.tsx
+// --- END PAGE COMPONENTS ---
 import ArOverlay, { type ArElement } from './components/ArOverlay.tsx';
 
 const WS_URL = `ws://localhost:3000`;
 
-type PageName = 'home' | 'services' | 'features' | 'about' | 'support';
-// --- NEW: Language type ---
-type LanguageCode = 'en-US' | 'hi-IN';
+// --- Translation object for Home page ---
+// --- FIX: Changed keys from 'en'/'hi' to 'en-US'/'hi-IN' ---
+const homeTranslations = {
+  'en-US': {
+    title: "Embark on your support journey with professionals",
+    ready: "Ready to help",
+    info: "Welcome to SAHAY Assistant, your gateway to instant technical support. We're here to help you resolve issues and guide you through any challenges with real-time assistance.",
+    start: "Start Session",
+    stop: "Stop Session",
+    analyze: "Analyze Screen",
+    placeholderTitle: "Ready to Share",
+    placeholderSubtitle: "Start Session to begin screen sharing"
+  },
+  'hi-IN': {
+    title: "पेशेवरों के साथ अपनी सहायता यात्रा शुरू करें",
+    ready: "मदद के लिए तैयार",
+    info: "SAHAY असिस्टेंट में आपका स्वागत है, जो तत्काल तकनीकी सहायता का आपका प्रवेश द्वार है। हम वास्तविक समय की सहायता से समस्याओं को हल करने और किसी भी चुनौती में आपका मार्गदर्शन करने के लिए यहां हैं।",
+    start: "सत्र शुरू करें",
+    stop: "सत्र रोकें",
+    analyze: "स्क्रीन का विश्लेषण करें",
+    placeholderTitle: "साझा करने के लिए तैयार",
+    placeholderSubtitle: "स्क्रीन शेयरिंग शुरू करने के लिए सत्र शुरू करें"
+  }
+};
+
 
 function App() {
   const [status, setStatus] = useState<string>('Idle');
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [arElements, setArElements] = useState<ArElement[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [page, setPage] = useState<PageName>('home'); // <-- NEW PAGE STATE
-  // --- NEW: Language state ---
+  const [page, setPage] = useState<PageName>('home');
   const [language, setLanguage] = useState<LanguageCode>('en-US');
   
   const ws = useRef<WebSocket | null>(null);
@@ -1197,10 +1280,8 @@ function App() {
       console.log('WebSocket Connected');
       setIsConnected(true);
       
-      // --- MODIFICATION: Send initial language setting on connect ---
       console.log(`Setting initial language to ${language}`);
       ws.current?.send(JSON.stringify({ type: 'set_language', language: language }));
-      // --- END MODIFICATION ---
 
       setStatus('Connected. Starting streams...');
       startStreaming();
@@ -1221,20 +1302,17 @@ function App() {
         stopSession(false);
       }
     };
-  }, [handleServerMessage, stopSession, isConnected, startStreaming, language]); // Added language to dependency array
+  }, [handleServerMessage, stopSession, isConnected, startStreaming, language]);
 
-  // --- NEW: Helper function to set page and close mobile menu ---
   const navigate = (pageName: PageName) => {
     setPage(pageName);
     setMobileMenuOpen(false);
   };
   
-  // --- NEW: Language change handler ---
   const handleLanguageChange = () => {
     const newLang = language === 'en-US' ? 'hi-IN' : 'en-US';
     setLanguage(newLang);
     
-    // Send language update to server if connected
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       console.log(`Sending language change to server: ${newLang}`);
       ws.current.send(JSON.stringify({ type: 'set_language', language: newLang }));
@@ -1243,17 +1321,20 @@ function App() {
     }
   };
   
-  // --- NEW: Helper to render the current page ---
   const renderPage = () => {
+    // --- Get translations for the current language ---
+    // This line is now safe because the keys in homeTranslations match LanguageCode
+    const t = homeTranslations[language];
+
     switch (page) {
       case 'services':
-        return <ServicesPage setPage={navigate} />;
+        return <ServicesPage setPage={navigate} language={language} />;
       case 'features':
-        return <FeaturesPage setPage={navigate} />;
+        return <FeaturesPage setPage={navigate} language={language} />;
       case 'about':
-        return <AboutPage setPage={navigate} />;
+        return <AboutPage setPage={navigate} language={language} />;
       case 'support':
-        return <SupportPage setPage={navigate} />;
+        return <SupportPage setPage={navigate} language={language} />;
       case 'home':
       default:
         return (
@@ -1261,7 +1342,7 @@ function App() {
             {/* Left Section - Title and Video */}
             <div className="left-section">
               <h1 className="main-title">
-                Embark on your support journey with professionals
+                {t.title} {/* <-- TRANSLATION */}
               </h1>
 
               <div className="video-container-wrapper">
@@ -1292,8 +1373,8 @@ function App() {
                       <div className="placeholder-overlay">
                         <div className="placeholder-text">
                           <Scan size={48} />
-                          <h3>Ready to Share</h3>
-                          <p>Start Session to begin screen sharing</p>
+                          <h3>{t.placeholderTitle}</h3> {/* <-- TRANSLATION */}
+                          <p>{t.placeholderSubtitle}</p> {/* <-- TRANSLATION */}
                         </div>
                       </div>
                     </div>
@@ -1327,7 +1408,7 @@ function App() {
               <div className="info-card">
                 <div className="ready-badge">
                   <div className="ready-indicator"></div>
-                  Ready to help
+                  {t.ready} {/* <-- TRANSLATION */}
                 </div>
 
                 <div className="profile-images">
@@ -1354,9 +1435,7 @@ function App() {
                 </div>
 
                 <p className="info-text">
-                  Welcome to SAHAY Assistant, your gateway to instant technical support. 
-                  We're here to help you resolve issues and guide you through any challenges 
-                  with real-time assistance.
+                  {t.info} {/* <-- TRANSLATION */}
                 </p>
 
                 <div className="controls-section">
@@ -1373,7 +1452,7 @@ function App() {
                     ) : (
                       <>
                         <Play size={18} />
-                        Start Session
+                        {t.start} {/* <-- TRANSLATION */}
                       </>
                     )}
                   </button>
@@ -1384,7 +1463,7 @@ function App() {
                     disabled={!isConnected}
                   >
                     <Square size={18} />
-                    Stop Session
+                    {t.stop} {/* <-- TRANSLATION */}
                   </button>
 
                   <button
@@ -1400,12 +1479,11 @@ function App() {
                     ) : (
                       <>
                         <Scan size={18} />
-                        Analyze Screen
+                        {t.analyze} {/* <-- TRANSLATION */}
                       </>
                     )}
                   </button>
                   
-                  {/* --- NEW LANGUAGE BUTTON --- */}
                   <button
                     className="control-btn language-btn"
                     onClick={handleLanguageChange}
@@ -1414,12 +1492,14 @@ function App() {
                     <Globe size={18} />
                     {language === 'en-US' ? 'Switch to Hindi (हिंदी)' : 'Switch to English'}
                   </button>
-                  {/* --- END NEW BUTTON --- */}
 
                 </div>
 
                 <div className="status-display">
                   {isConnected && <div className="status-dot"></div>}
+                  {/* Status text comes from the server, 
+                    which already translates it based on language.
+                  */}
                   <span>{status}</span>
                 </div>
               </div>
@@ -1446,7 +1526,6 @@ function App() {
           </ul>
         </nav>
         
-        {/* --- MODIFICATION: Added onClick handler --- */}
         <button className="contact-button" onClick={() => navigate('home')}>Get Help</button>
         
         <button 

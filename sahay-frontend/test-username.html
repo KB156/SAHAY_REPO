@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login (Username Error)</title>
+    <style>
+        body { font-family: sans-serif; position: relative; height: 500px; background-color: #f4f4f4; }
+        .form-element { position: absolute; box-sizing: border-box; }
+        label { display: block; font-size: 14px; font-weight: bold; }
+        input[type="text"], input[type="password"] {
+            padding: 8px; border: 2px solid #777; border-radius: 5px;
+            background-color: #ffffff; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1) inset;
+        }
+        button {
+            padding: 10px 15px; cursor: pointer; background-color: #007bff; color: white;
+            border: none; border-radius: 5px; font-size: 16px; font-weight: bold;
+        }
+        .error-message { color: red; font-size: 14px; font-weight: bold; visibility: visible; }
+
+        /* Positioning */
+        #user-label { left: 50px; top: 80px; width: 100px; height: 20px; }
+        #username { left: 160px; top: 100px; width: 200px; height: 38px; }
+        
+        #pass-label { left: 50px; top: 150px; width: 100px; height: 20px; }
+        #password { left: 160px; top: 170px; width: 200px; height: 38px; }
+        
+        /* THE ERROR IS NOW HERE */
+        #error-div { left: 50px; top: 130px; width: 350px; height: 20px; }
+        
+        #submit-btn { left: 50px; top: 230px; width: 90px; height: 40px; }
+    </style>
+</head>
+<body>
+    <h2>Simple Login Form</h2>
+
+    <label id="user-label" class="form-element" for="username">Username:</label>
+    <input class="form-element" type="text" id="username" name="username">
+
+    <div id="error-div" class="form-element error-message">
+        Error: Username cannot be blank.
+    </div>
+
+    <label id="pass-label" class="form-element" for="password">Password:</label>
+    <input class="form-element" type="password" id="password" name="password" value="asdfasdf">
+
+    <button id="submit-btn" class="form-element" type="button">Submit</button>
+</body>
+</html>

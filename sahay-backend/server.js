@@ -11,9 +11,9 @@ const textToSpeech = require('@google-cloud/text-to-speech');
 const vision = require('@google-cloud/vision');
 const speech = require('@google-cloud/speech');
 const crypto = require('crypto');
-const sharp = require('sharp');
+const sharp = require('sharp'); // For image resizing
 
-// --- Initialization (unchanged) ---
+// --- Initialization ---
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
@@ -32,7 +32,7 @@ const generativeModel = vertex_ai.preview.getGenerativeModel({
         topP: 0.8,
         topK: 40,
     },
-    safetySettings: [],
+    safetySettings: [], // Disable safety filters
 });
 
 const ttsClient = new textToSpeech.TextToSpeechClient();
@@ -49,15 +49,15 @@ wss.on('connection', (ws) => {
     const connectionId = crypto.randomUUID();
     console.log(`Client ${connectionId} connected via WebSocket`);
 
-    // --- SIMPLIFIED STATE ---
+    // --- Full State Initialization ---
     stateStore[connectionId] = {
         language: 'en-US',
         sttStream: null,
         sttStreamActive: false,
-        lastTranscript: null, // Store the most recent speech
-        lastOcrData: null, 
-        lastSnapshotDims: null ,
-        isProcessing: false  // Store the most recent snapshot OCR
+        lastTranscript: null,
+        lastOcrData: null,
+        lastSnapshotDims: null, // Will be { width, height }
+        isProcessing: false   // Prevents duplicate AI calls
     };
     console.log(`[${connectionId}] Initial state:`, stateStore[connectionId]);
 
@@ -100,23 +100,20 @@ wss.on('connection', (ws) => {
                     }
                 }
             })
-            // --- MODIFIED STT DATA HANDLER ---
             .on('data', async (data) => {
                 const sessionState = stateStore[connectionId];
                 if (!sessionState) return;
 
-                // --- ADD A FLAG TO PREVENT MULTIPLE AI CALLS ---
                 if (sessionState.isProcessing) {
                     console.log(`[${connectionId}] Already processing, ignoring new transcript.`);
                     return;
                 }
-                // --- END ADD ---
 
                 if (data.results[0] && data.results[0].isFinal) {
                     const transcript = data.results[0].alternatives[0].transcript.trim();
                     if (transcript.length === 0) {
                         console.log(`[${connectionId}] Ignoring empty transcript.`);
-                        return; // Ignore empty transcript
+                        return;
                     }
                     
                     console.log(`[${connectionId}] *** TRANSCRIPTION: "${transcript}" ***`);
@@ -138,16 +135,35 @@ wss.on('connection', (ws) => {
 
                     console.log(`[${connectionId}] Have transcript and OCR. Calling AI...`);
                     
-                    // --- SET FLAG ---
                     sessionState.isProcessing = true;
                     
                     const plan = await getGuidanceStep_OneShot(sessionState);
 
                     if (plan && plan.guide_text) {
-                        // --- !! THIS IS THE FIX !! ---
-                        // Pass the whole sessionState, not just sessionState.language
+                        
+                        // --- !! PADDING LOGIC !! ---
+                        const targetText = plan.ar_target_text || "";
+                        if (plan.ar_target_coords && (targetText.toLowerCase().includes("password") || targetText.toLowerCase().includes("username"))) {
+                            console.log(`[${connectionId}] AI targeted a form label. Expanding BBox to include input field.`);
+                            const [x1, y1, x2, y2] = plan.ar_target_coords;
+                            const boxWidth = x2 - x1;
+                            const boxHeight = y2 - y1;
+                            
+                            const horizontalPadding = boxWidth * 1.5 + 20; 
+                            const verticalPadding = boxHeight * 0.5; 
+
+                            plan.ar_target_coords = [
+                                Math.max(0, x1 - 5),
+                                Math.max(0, y1 - verticalPadding),
+                                x2 + horizontalPadding,
+                                y2 + verticalPadding
+                            ];
+                            console.log(`[${connectionId}] Original BBox: [${x1},${y1},${x2},${y2}]`);
+                            console.log(`[${connectionId}] New Expanded BBox:`, plan.ar_target_coords);
+                        }
+                        // --- !! END PADDING LOGIC !! ---
+
                         await sendActionToClient(ws, plan, sessionState); 
-                        // --- !! END FIX !! ---
                         
                         sessionState.lastTranscript = null;
                         sessionState.lastOcrData = null;
@@ -159,7 +175,6 @@ wss.on('connection', (ws) => {
                         }));
                     }
                     
-                    // --- UNSET FLAG ---
                     sessionState.isProcessing = false;
                 }
             });
@@ -173,17 +188,15 @@ wss.on('connection', (ws) => {
         }));
     }; // End setupSttStream
 
-    setupSttStream(); // Start STT on connection
+    setupSttStream();
 
-    // --- MODIFIED MESSAGE HANDLER ---
+    // --- WebSocket Message Handler ---
     ws.on('message', async (message) => {
         const sessionState = stateStore[connectionId];
         if (!sessionState) return;
 
-        // ---!! FIX: THESE LINES WERE MISSING !!---
         let isAudio = false;
         let parsedMessage = null;
-        // ---!! END FIX !!---
 
         try {
             const messageString = message.toString();
@@ -196,7 +209,7 @@ wss.on('connection', (ws) => {
             if (message instanceof Buffer || message instanceof ArrayBuffer) isAudio = true;
         }
 
-        // --- Process Audio ---
+        // Process Audio
         if (isAudio) {
             const audioBuffer = (message instanceof Buffer) ? message : Buffer.from(message);
             if (sessionState.sttStream && sessionState.sttStreamActive) {
@@ -208,45 +221,60 @@ wss.on('connection', (ws) => {
                 }
             } else if (!sessionState.sttStreamActive && sessionState.sttStream === null) {
                 console.log(`[${connectionId}] STT stream inactive, restarting.`);
-                setupSttStream(); // Try to restart
+                setupSttStream();
             }
         }
-        // --- Process JSON ---
-        // This 'if' block (your line 159) will now work correctly
+        // Process JSON
         else if (parsedMessage) { 
             
-            // --- HANDLE SNAPSHOT (From "Analyze Screen" button) ---
             if (parsedMessage.type === 'screen_snapshot' && parsedMessage.imageData) {
                  console.log(`[${connectionId}] Received screen snapshot.`);
                  
-                
-
-                 // --- MODIFIED CALL ---
-                 // Pass the whole sessionState so getOcrResults can see snapshot dimensions
                  const ocrResults = await getOcrResults(connectionId, parsedMessage.imageData, sessionState); 
-                 // --- END MODIFICATION ---
 
                  if (ocrResults !== null) {
-                     sessionState.lastOcrData = ocrResults; // Store combined OCR/Object data
+                     sessionState.lastOcrData = ocrResults;
                      console.log(`[${connectionId}] Stored ${ocrResults.length} total screen elements.`);
 
-                     // (The rest of this logic is unchanged)
                      if (sessionState.lastTranscript && !sessionState.isProcessing) {
-                        sessionState.isProcessing = true; // Set flag
+                        sessionState.isProcessing = true; 
                         console.log(`[${connectionId}] Have pending transcript. Calling AI...`);
                         
                         const plan = await getGuidanceStep_OneShot(sessionState);
                         if (plan && plan.guide_text) {
+                            
+                            // --- !! PADDING LOGIC (Copied) !! ---
+                            const targetText = plan.ar_target_text || "";
+                            if (plan.ar_target_coords && (targetText.toLowerCase().includes("password") || targetText.toLowerCase().includes("username"))) {
+                                console.log(`[${connectionId}] AI targeted a form label. Expanding BBox to include input field.`);
+                                const [x1, y1, x2, y2] = plan.ar_target_coords;
+                                const boxWidth = x2 - x1;
+                                const boxHeight = y2 - y1;
+
+                                const horizontalPadding = boxWidth * 1.5 + 20;
+                                const verticalPadding = boxHeight * 0.5; 
+
+                                plan.ar_target_coords = [
+                                    Math.max(0, x1 - 5),
+                                    Math.max(0, y1 - verticalPadding),
+                                    x2 + horizontalPadding,
+                                    y2 + verticalPadding
+                                ];
+                                console.log(`[${connectionId}] Original BBox: [${x1},${y1},${x2},${y2}]`);
+                                console.log(`[${connectionId}] New Expanded BBox:`, plan.ar_target_coords);
+                            }
+                            // --- !! END PADDING LOGIC !! ---
+
                             await sendActionToClient(ws, plan, sessionState); 
                         }
                         sessionState.lastTranscript = null;
                         sessionState.lastOcrData = null;
                         
-                        sessionState.isProcessing = false; // Unset flag
+                        sessionState.isProcessing = false; 
                      
-                     // --- ADDED THIS ELSE IF ---
                      } else if (sessionState.isProcessing) {
                          console.log(`[${connectionId}] OCR data stored, but AI is already processing.`);
+                     
                      } else {
                         console.log(`[${connectionId}] OCR/Object data stored. Waiting for user to speak.`);
                         ws.send(JSON.stringify({ 
@@ -258,7 +286,6 @@ wss.on('connection', (ws) => {
                      ws.send(JSON.stringify({ type: 'status', message: 'Error processing screen image.' }));
                  }
             }
-            // --- ALL CLICK LOGIC IS REMOVED ---
             else {
                 console.log(`[${connectionId}] Received unknown JSON type:`, parsedMessage.type);
             }
@@ -286,29 +313,23 @@ wss.on('connection', (ws) => {
 }); // End wss.on('connection')
 
 
-// --- OCR Function (Unchanged) ---
-// server.js (REPLACE this function)
-
-// server.js (REPLACE this function)
-
+// --- Get OCR / Objects Function ---
 async function getOcrResults(connectionId, base64ImageData, sessionState) {
     console.log(`[${connectionId}] Requesting OCR and Object Detection...`);
     
     let imgWidth, imgHeight, processedBase64;
 
     try {
-        // --- 1. Resize the image ---
         const inputBuffer = Buffer.from(base64ImageData, 'base64');
         console.log(`[${connectionId}] Resizing image...`);
         const { data: resizedBuffer, info: resizedInfo } = await sharp(inputBuffer)
             .resize({ width: 1280 }) // Resize to a standard 1280px width
             .toBuffer({ resolveWithObject: true });
         
-        imgWidth = resizedInfo.width; // This will be 1280
-        imgHeight = resizedInfo.height; // This will be the new proportional height
+        imgWidth = resizedInfo.width;
+        imgHeight = resizedInfo.height;
         processedBase64 = resizedBuffer.toString('base64');
 
-        // --- 2. Store these *new* dimensions for the AR overlay ---
         sessionState.lastSnapshotDims = { width: imgWidth, height: imgHeight };
         console.log(`[${connectionId}] Image resized to ${imgWidth}x${imgHeight}.`);
 
@@ -318,9 +339,8 @@ async function getOcrResults(connectionId, base64ImageData, sessionState) {
     }
 
     try {
-        // --- 3. Send the *resized* image to Vision API ---
         const request = {
-            image: { content: processedBase64 }, // Send resized image
+            image: { content: processedBase64 },
             features: [
                 { type: 'TEXT_DETECTION' },
                 { type: 'OBJECT_LOCALIZATION' }
@@ -331,7 +351,6 @@ async function getOcrResults(connectionId, base64ImageData, sessionState) {
         
         const allScreenElements = [];
 
-        // --- 4. Process Text (relative to resized image) ---
         const textDetections = result.textAnnotations;
         if (textDetections && textDetections.length > 0) {
             const ocrData = textDetections.slice(1).map(text => {
@@ -349,11 +368,9 @@ async function getOcrResults(connectionId, base64ImageData, sessionState) {
             console.log(`[${connectionId}] OCR: No text detected.`);
         }
 
-        // --- 5. Process Objects (relative to resized image) ---
         const objectDetections = result.localizedObjectAnnotations;
         if (objectDetections && objectDetections.length > 0) {
             const objectData = objectDetections.map(obj => {
-                // De-normalize using the *resized* dimensions
                 const xValues = obj.boundingPoly.normalizedVertices.map(v => (v.x ?? 0) * imgWidth);
                 const yValues = obj.boundingPoly.normalizedVertices.map(v => (v.y ?? 0) * imgHeight);
                 
@@ -377,16 +394,9 @@ async function getOcrResults(connectionId, base64ImageData, sessionState) {
         return null;
     }
 }
-// --- VERIFICATION FUNCTIONS (isClickValid, verifyUserAction) ARE REMOVED ---
 
 
-// --- NEW SINGLE-SHOT AI FUNCTION ---
-// server.js (REPLACE this function)
-
-// server.js (REPLACE this function)
-
-// server.js (REPLACE this function)
-
+// --- Get AI Guidance Function ---
 async function getGuidanceStep_OneShot(sessionState) {
     const connectionId = Object.keys(stateStore).find(key => stateStore[key] === sessionState);
     if (!connectionId) console.error("Could not find connectionId for sessionState!");
@@ -399,7 +409,6 @@ async function getGuidanceStep_OneShot(sessionState) {
 
     const transcriptString = sessionState.lastTranscript ? `"${sessionState.lastTranscript}"` : "User did not speak, just sent screen analysis.";
     
-    // --- UPDATED PROMPT ---
     const prompt = `
 SYSTEM_ROLE: You are SAHAY, an expert AI assistant.
 USER_LANGUAGE: "en-US"
@@ -421,17 +430,6 @@ TASK: Your goal is to identify the user's problem and guide them to the *correct
 4.  **!! FALLBACK !!:** If you cannot find a relevant "object" (e.g., the list has "No objects detected"), you MUST use the "bbox" of the **Target Label** ("text" element) as the "ar_target_coords".
 5.  **Formulate Plan:** Return the coordinates ("bbox") of your chosen target.
 
-EXAMPLE 1 (Object Found):
-- Context: User says "I can't log in". SCREEN_ELEMENTS contains {"type": "text", "text": "Password:", "bbox": [50, 130, 150, 150]} and {"type": "object", "name": "Input field", "bbox": [160, 150, 360, 170]}.
-- Action: You choose the "Input field" because it's next to "Password:".
-- Response: "ar_target_coords": [160, 150, 360, 170]
-
-EXAMPLE 2 (No Object Found):
-- Context: User says "I can't log in". SCREEN_ELEMENTS contains {"type": "text", "text": "Error: Password field cannot be empty.", "bbox": [50, 175, 400, 195]} and NO "object" elements.
-- Action: You must use the "text" element as a fallback.
-- Response: "ar_target_coords": [50, 175, 400, 195]
-
-
 Respond ONLY in this JSON format (no markdown, no extra text):
 {
     "diagnosis": "Brief explanation of the problem (e.g., 'The password field is empty.')",
@@ -441,7 +439,6 @@ Respond ONLY in this JSON format (no markdown, no extra text):
     "ar_color": "red"
 }
 `;
-    // --- END UPDATED PROMPT ---
 
     try {
         console.log(`[${connectionId}] Sending updated prompt (with objects) to Vertex AI...`);
@@ -464,14 +461,13 @@ Respond ONLY in this JSON format (no markdown, no extra text):
             .replace(/\s*```$/, '')
             .trim();
         
-        // --- ADD THIS CHECK ---
         if (!jsonText) {
             throw new Error("Received empty response from Vertex AI (likely safety-blocked).");
         }
-        // --- END ADDED CHECK ---
 
         const parsedPlan = JSON.parse(jsonText);
         
+        // We no longer pad here, we pad in the calling functions
         if (!parsedPlan.ar_target_coords || !Array.isArray(parsedPlan.ar_target_coords) || parsedPlan.ar_target_coords.length !== 4) {
              console.warn(`[${connectionId}] AI returned invalid or null coordinates. Clearing them.`);
              parsedPlan.ar_target_coords = null;
@@ -491,22 +487,20 @@ Respond ONLY in this JSON format (no markdown, no extra text):
         };
     }
 }
-// --- sendActionToClient (Unchanged, still works) ---
-async function sendActionToClient(ws, plan, sessionState) { // <-- Pass full sessionState
+
+
+// --- Send Action to Client Function ---
+async function sendActionToClient(ws, plan, sessionState) {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
         console.log("WebSocket not open, cannot send action.");
         return;
     }
     
-    // Get language and dims from session
     const languageCode = sessionState.language || 'en-US';
-    // --- THIS IS THE FIX ---
-    // Use the stored snapshot dimensions, or fallback to 1280x720
     const referenceSize = sessionState.lastSnapshotDims || { width: 1280, height: 720 };
     if (!sessionState.lastSnapshotDims) {
         console.warn("Using fallback 1280x720 reference size!");
     }
-    // --- END FIX ---
 
     console.log(`Sending action for language: ${languageCode}`, plan);
     console.log(`Using reference size: ${referenceSize.width}x${referenceSize.height}`);
@@ -516,7 +510,7 @@ async function sendActionToClient(ws, plan, sessionState) { // <-- Pass full ses
             action: 'draw_box',
             color: plan.ar_color || 'red',
             coords: plan.ar_target_coords,
-            referenceSize: referenceSize // <-- Use the dynamic referenceSize
+            referenceSize: referenceSize
         };
         console.log("Sending AR Data:", arData);
         ws.send(JSON.stringify(arData));
@@ -546,6 +540,7 @@ async function sendActionToClient(ws, plan, sessionState) { // <-- Pass full ses
     }
 }
 
+// --- Start Server ---
 server.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT}`);
 });

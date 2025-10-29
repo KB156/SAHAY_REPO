@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Object Detection</title>
+    <style>
+        body { font-family: sans-serif; padding: 30px; background-color: #fff; }
+        fieldset {
+            padding: 20px;
+            border: 2px solid #000;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        legend {
+            font-size: 24px;
+            font-weight: bold;
+            padding: 0 10px;
+        }
+        div { margin-bottom: 20px; }
+        label {
+            font-size: 18px;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, select, button {
+            display: block;
+            width: 300px;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #555;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            width: 328px; /* Match input width + padding */
+            background-color: #28a745;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <fieldset>
+        <legend>Contact Form</legend>
+
+        <div>
+            <label for="name">Full Name:</label>
+            <input type="text" id="name" name="name">
+        </div>
+
+        <div>
+            <label for="reason">Reason for Contact:</label>
+            <select id="reason" name="reason">
+                <option value="support">Support</option>
+                <option value="billing">Billing</option>
+                <option value="sales">Sales</option>
+            </select>
+        </div>
+
+        <div>
+            <button type="submit">Submit Form</button>
+        </div>
+    </fieldset>
+
+</body>
+</html>

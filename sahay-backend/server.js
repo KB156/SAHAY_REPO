@@ -40,7 +40,10 @@ const visionClient = new vision.ImageAnnotatorClient();
 const speechClient = new speech.SpeechClient();
 const stateStore = {};
 
-app.use(cors());
+const corsOptions = {
+  origin: 'https://sahay-repo-two.vercel.app/' // <-- Your Vercel URL
+};
+app.use(cors(corsOptions));
 app.use(express.static(path.join(__dirname, '../sahay-frontend/dist')));
 // --- End Initialization ---
 

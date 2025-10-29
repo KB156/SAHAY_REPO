@@ -1031,7 +1031,8 @@ const SupportPage = ({ setPage, language }: PageProps) => {
 // --- END PAGE COMPONENTS ---
 import ArOverlay, { type ArElement } from './components/ArOverlay.tsx';
 
-const WS_URL = `ws://localhost:3000`;
+// Vite uses import.meta.env.VITE_...
+const WS_URL = import.meta.env.VITE_APP_WS_URL || `ws://localhost:3000`;
 
 // --- Translation object for Home page ---
 // --- FIX: Changed keys from 'en'/'hi' to 'en-US'/'hi-IN' ---

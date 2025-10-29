@@ -17,7 +17,7 @@ const sharp = require('sharp'); // For image resizing
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000; // Render's default port
 
 const vertex_ai = new VertexAI({
     project: process.env.GOOGLE_CLOUD_PROJECT_ID,

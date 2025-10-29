@@ -838,11 +838,11 @@ const ServicesPage = ({ setPage, language }: PageProps) => {
       title: "Our Services",
       intro: "SAHAY provides premier, real-time technical support designed to solve your problems instantly. Our services are built to be intuitive, responsive, and effective.",
       card1Title: "Instant Visual Guidance",
-      card1Text: "Our experts see what you see. Through screen sharing, we provide live, on-screen guidance, drawing and pointing to solve issues faster than ever.",
+      card1Text: "Our AI see what you see. Through screen sharing, we provide live, on-screen guidance, drawing and pointing to solve issues faster than ever.",
       card2Title: "Secure & Private",
-      card2Text: "Your privacy is our priority. Our sessions are fully encrypted, and our professionals are trained to handle your data with the utmost confidentiality.",
+      card2Text: "Your privacy is our priority. Our sessions are fully encrypted, and our AI model is trained to handle your data with the utmost confidentiality.",
       card3Title: "24/7 Expert Support",
-      card3Text: "Get help whenever you need it. Our team of certified professionals is available around the clock to assist you with any technical challenge, big or small.",
+      card3Text: "Get help whenever you need it. Our team is available around the clock to assist you with any technical challenge, big or small.",
     },
     'hi-IN': {
       title: "हमारी सेवाएँ",
@@ -901,7 +901,7 @@ const FeaturesPage = ({ setPage, language }: PageProps) => {
       intro: "Our platform is packed with features to make your support experience seamless.",
       card1Title: "Real-Time AR Overlays",
       card1Text: "Our core feature. We draw directly on your screen to show you exactly where to click and what to do.",
-      card2Title: "AI-Powered Assistance",
+      card2Title: "AI-Powered Assistance in your languauge",
       card2Text: "Our assistant analyzes your screen to understand the context of your problem, providing faster and more accurate solutions.",
       card3Title: "Multi-Platform Support",
       card3Text: "Whether you're on a desktop, laptop, or mobile device, SAHAY is ready to help you on any platform.",
@@ -961,7 +961,7 @@ const AboutPage = ({ setPage, language }: PageProps) => {
     'en-US': {
       title: "About SAHAY",
       p1: "SAHAY was founded on a simple principle: technical support should be easy, personal, and instant. We were tired of confusing phone calls and endless support articles. We believed there had to be a better way.",
-      p2: "Our mission is to empower everyone to use technology fearlessly. We connect you with real experts who can see your problem and guide you to a solution in real-time. We're not just a support company; we're your personal tech assistant.",
+      p2: "Our mission is to empower everyone to use technology fearlessly. We connect you with advanced AI models who can see your problem and guide you to a solution in real-time. We're not just a support company; we're your personal tech assistant.",
     },
     'hi-IN': {
       title: "SAHAY के बारे में",
@@ -990,7 +990,7 @@ const SupportPage = ({ setPage, language }: PageProps) => {
   const t = {
     'en-US': {
       title: "Support",
-      p1: "Need help? You're in the right place. Our main support method is right on the home page! Just click \"Start Session\" to connect with a professional.",
+      p1: "Need help? You're in the right place. Our main support method is right on the home page! Just click \"Start Session\" to connect with the AI assistant.",
       p2: "For account inquiries or other questions, you can also reach us at:",
       email: "Email Us",
       call: "Call Us",
@@ -1037,7 +1037,7 @@ const WS_URL = `ws://localhost:3000`;
 // --- FIX: Changed keys from 'en'/'hi' to 'en-US'/'hi-IN' ---
 const homeTranslations = {
   'en-US': {
-    title: "Embark on your support journey with professionals",
+    title: "Embark on your support journey with Artificial Intelligence",
     ready: "Ready to help",
     info: "Welcome to SAHAY Assistant, your gateway to instant technical support. We're here to help you resolve issues and guide you through any challenges with real-time assistance.",
     start: "Start Session",

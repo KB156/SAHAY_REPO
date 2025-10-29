@@ -126,9 +126,12 @@ wss.on('connection', (ws) => {
 
                     if (!sessionState.lastOcrData) {
                         console.log(`[${connectionId}] No OCR data. Asking user to analyze screen.`);
+                        const message = sessionState.language === 'hi-IN'
+                            ? 'कृपया "Analyze Screen" पर क्लिक करें ताकि मैं देख सकूं।'
+                            : 'Please click "Analyze Screen" first so I can see what you see.';
                         ws.send(JSON.stringify({ 
                             type: 'status', 
-                            message: 'Please click "Analyze Screen" first so I can see what you see.' 
+                            message: message
                         }));
                         return;
                     }
@@ -169,9 +172,12 @@ wss.on('connection', (ws) => {
                         sessionState.lastOcrData = null;
                     } else {
                         console.log(`[${connectionId}] Failed to get valid plan from Gemini.`);
+                        const message = sessionState.language === 'hi-IN'
+                            ? 'क्षमा करें, मैं उस अनुरोध को संसाधित नहीं कर सका।'
+                            : 'Sorry, I couldn\'t process that request.';
                         ws.send(JSON.stringify({ 
                             type: 'status', 
-                            message: 'Sorry, I couldn\'t process that request.' 
+                            message: message 
                         }));
                     }
                     
@@ -182,9 +188,12 @@ wss.on('connection', (ws) => {
         sessionState.sttStream = recognizeStream;
         sessionState.sttStreamActive = true;
         console.log(`[${connectionId}] STT stream created and active.`);
+        const message = sessionState.language === 'hi-IN'
+            ? 'नमस्ते! "Analyze Screen" पर क्लिक करें, फिर अपनी समस्या बताएं।'
+            : 'Welcome! Click "Analyze Screen", then describe your issue.';
         ws.send(JSON.stringify({ 
             type: 'status', 
-            message: 'Welcome! Click "Analyze Screen", then describe your issue.' 
+            message: message 
         }));
     }; // End setupSttStream
 
@@ -277,15 +286,54 @@ wss.on('connection', (ws) => {
                      
                      } else {
                         console.log(`[${connectionId}] OCR/Object data stored. Waiting for user to speak.`);
+                        const message = sessionState.language === 'hi-IN'
+                            ? 'स्क्रीन का विश्लेषण किया गया। कृपया अपनी समस्या बताएं।'
+                            : 'Screen analyzed. Please describe your problem.';
                         ws.send(JSON.stringify({ 
                             type: 'status', 
-                            message: 'Screen analyzed. Please describe your problem.' 
+                            message: message 
                         }));
                      }
                  } else {
-                     ws.send(JSON.stringify({ type: 'status', message: 'Error processing screen image.' }));
+                     const message = sessionState.language === 'hi-IN'
+                        ? 'स्क्रीन छवि को संसाधित करने में त्रुटि।'
+                        : 'Error processing screen image.';
+                     ws.send(JSON.stringify({ type: 'status', message: message }));
                  }
             }
+            // --- START: MODIFICATION FOR LANGUAGE CHANGE ---
+            else if (parsedMessage.type === 'set_language' && parsedMessage.language) {
+                const newLang = parsedMessage.language; // e.g., "hi-IN"
+                
+                if (sessionState.language !== newLang) {
+                    console.log(`[${connectionId}] Language change request: ${newLang}`);
+                    sessionState.language = newLang;
+
+                    // Restart the STT stream with the new language
+                    if (sessionState.sttStream) {
+                        console.log(`[${connectionId}] Destroying old STT stream...`);
+                        sessionState.sttStream.destroy();
+                        sessionState.sttStream = null;
+                        sessionState.sttStreamActive = false;
+                    }
+                    
+                    console.log(`[${connectionId}] Setting up new STT stream for ${newLang}.`);
+                    // This will automatically use the new 'sessionState.language'
+                    setupSttStream(); 
+                    
+                    const message = newLang === 'hi-IN'
+                        ? 'भाषा हिंदी पर सेट की गई।'
+                        : 'Language set to English.';
+                    
+                    ws.send(JSON.stringify({ 
+                        type: 'status', 
+                        message: message 
+                    }));
+                } else {
+                    console.log(`[${connectionId}] Language is already ${newLang}. No change.`);
+                }
+            }
+            // --- END: MODIFICATION FOR LANGUAGE CHANGE ---
             else {
                 console.log(`[${connectionId}] Received unknown JSON type:`, parsedMessage.type);
             }
@@ -409,10 +457,11 @@ async function getGuidanceStep_OneShot(sessionState) {
 
     const transcriptString = sessionState.lastTranscript ? `"${sessionState.lastTranscript}"` : "User did not speak, just sent screen analysis.";
     
+    // --- START: MODIFICATION FOR LANGUAGE ---
     const prompt = `
 SYSTEM_ROLE: You are SAHAY, an expert AI assistant.
-USER_LANGUAGE: "en-US"
-INSTRUCTION: Analyze the user's speech and screen to provide a single, clear piece of guidance.
+USER_LANGUAGE: "${sessionState.language}"
+INSTRUCTION: Analyze the user's speech and screen to provide a single, clear piece of guidance in the USER_LANGUAGE.
 
 --- CONTEXT ---
 USER_TRANSCRIPT: ${transcriptString}
@@ -429,16 +478,18 @@ TASK: Your goal is to identify the user's problem and guide them to the *correct
 3.  **Find the Target UI Element:** Find the "object" (like "Input field" or "Button") that is *spatially closest* to that Target Label.
 4.  **!! FALLBACK !!:** If you cannot find a relevant "object" (e.g., the list has "No objects detected"), you MUST use the "bbox" of the **Target Label** ("text" element) as the "ar_target_coords".
 5.  **Formulate Plan:** Return the coordinates ("bbox") of your chosen target.
+6.  **LANGUAGE RULE:** The "diagnosis" and "guide_text" fields MUST be in the USER_LANGUAGE (${sessionState.language}).
 
 Respond ONLY in this JSON format (no markdown, no extra text):
 {
-    "diagnosis": "Brief explanation of the problem (e.g., 'The password field is empty.')",
-    "guide_text": "Clear instruction for the user's next action (e.g., 'Please click in the password field to type.')",
+    "diagnosis": "Brief explanation of the problem (e.g., 'The password field is empty.') in ${sessionState.language}",
+    "guide_text": "Clear instruction for the user's next action (e.g., 'Please click in the password field to type.') in ${sessionState.language}",
     "ar_target_text": "The 'name' or 'text' of the target you are highlighting (e.g., 'Password' or 'Input field')",
     "ar_target_coords": [160, 150, 360, 170],
     "ar_color": "red"
 }
 `;
+// --- END: MODIFICATION FOR LANGUAGE ---
 
     try {
         console.log(`[${connectionId}] Sending updated prompt (with objects) to Vertex AI...`);
@@ -477,10 +528,13 @@ Respond ONLY in this JSON format (no markdown, no extra text):
         return parsedPlan;
 
     } catch (error) {
-        console.error(`[${connectionId}] Error calling Vertex AI API:`, error);
+        console.error(`[${connectionId}] Error calling Vertex AI:`, error);
+        const guide_text = sessionState.language === 'hi-IN'
+            ? 'क्षमा करें, मुझे एक त्रुटि हुई। कृपया स्क्रीन का फिर से विश्लेषण करने का प्रयास करें।'
+            : 'Sorry, I ran into an error. Please try analyzing the screen again.';
         return {
             diagnosis: "AI Error",
-            guide_text: "Sorry, I ran into an error. Please try analyzing the screen again.",
+            guide_text: guide_text,
             ar_target_text: null,
             ar_target_coords: null,
             ar_color: "red",
@@ -521,11 +575,19 @@ async function sendActionToClient(ws, plan, sessionState) {
     if (plan.guide_text) {
         try {
             console.log(`Requesting TTS for [${languageCode}]: "${plan.guide_text}"`);
+            
+            // --- MODIFICATION: Select Hindi voice if language is hi-IN ---
+            const voiceConfig = languageCode === 'hi-IN'
+                ? { languageCode: 'hi-IN', name: 'hi-IN-Wavenet-A' } // Example: Using Wavenet-A for Hindi
+                : { languageCode: 'en-US', ssmlGender: 'NEUTRAL' };
+
             const request = {
                 input: { text: plan.guide_text },
-                voice: { languageCode: languageCode, ssmlGender: 'NEUTRAL' },
+                voice: voiceConfig,
                 audioConfig: { audioEncoding: 'MP3' },
             };
+            // --- END MODIFICATION ---
+
             const [response] = await ttsClient.synthesizeSpeech(request);
             const audioBase64 = response.audioContent.toString('base64');
             const audioData = {

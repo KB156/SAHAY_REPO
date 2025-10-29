@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Play, Square, Scan, Menu, X, ArrowLeft, Zap, Shield, Users, LifeBuoy } from 'lucide-react';
+import { Play, Square, Scan, Menu, X, ArrowLeft, Zap, Shield, Users, LifeBuoy, Globe } from 'lucide-react'; // Added Globe icon
 
 // Styles Component
 const AppStyles = () => (
@@ -521,6 +521,20 @@ const AppStyles = () => (
       transform: translateY(-2px);
     }
 
+    /* --- NEW LANGUAGE BUTTON STYLE --- */
+    .language-btn {
+      background-color: var(--card-white);
+      color: var(--text-light);
+      border-color: var(--border-color);
+    }
+
+    .language-btn:not(:disabled):hover {
+      background-color: #f9f9f9;
+      color: var(--text-dark);
+      transform: translateY(-2px);
+    }
+    /* --- END NEW STYLE --- */
+
     /* Status Display */
     .status-display {
       display: flex;
@@ -958,6 +972,8 @@ import ArOverlay, { type ArElement } from './components/ArOverlay.tsx';
 const WS_URL = `ws://localhost:3000`;
 
 type PageName = 'home' | 'services' | 'features' | 'about' | 'support';
+// --- NEW: Language type ---
+type LanguageCode = 'en-US' | 'hi-IN';
 
 function App() {
   const [status, setStatus] = useState<string>('Idle');
@@ -965,6 +981,8 @@ function App() {
   const [arElements, setArElements] = useState<ArElement[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [page, setPage] = useState<PageName>('home'); // <-- NEW PAGE STATE
+  // --- NEW: Language state ---
+  const [language, setLanguage] = useState<LanguageCode>('en-US');
   
   const ws = useRef<WebSocket | null>(null);
   const nextArId = useRef<number>(0);
@@ -1174,9 +1192,16 @@ function App() {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) return;
     ws.current = new WebSocket(WS_URL);
     setStatus('Connecting...');
+    
     ws.current.onopen = () => {
       console.log('WebSocket Connected');
       setIsConnected(true);
+      
+      // --- MODIFICATION: Send initial language setting on connect ---
+      console.log(`Setting initial language to ${language}`);
+      ws.current?.send(JSON.stringify({ type: 'set_language', language: language }));
+      // --- END MODIFICATION ---
+
       setStatus('Connected. Starting streams...');
       startStreaming();
     };
@@ -1196,12 +1221,26 @@ function App() {
         stopSession(false);
       }
     };
-  }, [handleServerMessage, stopSession, isConnected, startStreaming]);
+  }, [handleServerMessage, stopSession, isConnected, startStreaming, language]); // Added language to dependency array
 
   // --- NEW: Helper function to set page and close mobile menu ---
   const navigate = (pageName: PageName) => {
     setPage(pageName);
     setMobileMenuOpen(false);
+  };
+  
+  // --- NEW: Language change handler ---
+  const handleLanguageChange = () => {
+    const newLang = language === 'en-US' ? 'hi-IN' : 'en-US';
+    setLanguage(newLang);
+    
+    // Send language update to server if connected
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      console.log(`Sending language change to server: ${newLang}`);
+      ws.current.send(JSON.stringify({ type: 'set_language', language: newLang }));
+    } else {
+      console.log(`Language set to ${newLang} (offline). Will be sent on connection.`);
+    }
   };
   
   // --- NEW: Helper to render the current page ---
@@ -1365,6 +1404,18 @@ function App() {
                       </>
                     )}
                   </button>
+                  
+                  {/* --- NEW LANGUAGE BUTTON --- */}
+                  <button
+                    className="control-btn language-btn"
+                    onClick={handleLanguageChange}
+                    disabled={isConnected} // Disable changing language mid-session
+                  >
+                    <Globe size={18} />
+                    {language === 'en-US' ? 'Switch to Hindi (हिंदी)' : 'Switch to English'}
+                  </button>
+                  {/* --- END NEW BUTTON --- */}
+
                 </div>
 
                 <div className="status-display">
@@ -1416,11 +1467,3 @@ function App() {
 }
 
 export default App;
-
-
-
-
-
-
-
-
